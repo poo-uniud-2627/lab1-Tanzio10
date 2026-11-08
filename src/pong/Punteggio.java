@@ -31,8 +31,9 @@ public class Punteggio {
     
     /**
      * Una partita nuova, 0 a 0, con la sua regola per vincere.
-     * Pretende: puntiPerVincere è almeno 1; scartoMinimo è almeno 1.
-     * Promette: una partita 0 a 0, non finita, senza vincitore e con la storia vuota.
+     * Pretende: niente.
+     * Promette: come prima (una partita 0 a 0, non finita, senza vincitore e con la storia vuota).
+     * Lancia IllegalArgumentException se puntiPerVincere è minore di 1 o scartoMinimo è minore di 1.
      */
     public Punteggio(int puntiPerVincere, int scartoMinimo) {
 
@@ -54,11 +55,12 @@ public class Punteggio {
 
     /**
      * Il lato chi ha fatto un punto.
-     * Pretende: chi non è null.
-     * Promette: se la partita non era finita, il lato chi ha un punto in più, l'altro lato non
+     * Pretende: niente.
+     * Promette: come prima: se la partita non era finita, il lato chi ha un punto in più, l'altro lato non
      *           cambia e il punto si aggiunge in fondo alla storia; se con questo punto il lato chi
      *           vince (regola in cima alla classe), la partita è finita e il vincitore è chi.
      *           Se la partita era già finita, non cambia niente.
+     * Se chi è null lancia IllegalArgumentException, anche a partita finita, e non cambia niente.
      */
     public void segnaPunto(Lato chi) {
 
@@ -83,8 +85,9 @@ public class Punteggio {
 
 
     /**
-     * Pretende: chi non è null.
-     * Promette: i punti del lato chi. Non cambia niente.
+     * Pretende: niente.
+     * Promette: come prima: i punti del lato chi. Non cambia niente.
+     * Lancia IllegalArgumentException se chi è null.
      */
     public int getPunti(Lato chi) {
         if( chi == null ) throw new IllegalArgumentException("chi non può essere null");
@@ -163,6 +166,45 @@ public class Punteggio {
         storia.clear();
     }
 
+
+    /**
+     * Invariante della rappresentazione. Valgono sempre:
+     *  1. puntiPerVincere e scartoMinimo sono almeno 1;
+     *  2. la storia non è null e non contiene elementi null;
+     *  3. puntiSinistra e puntiDestra sono quante volte SINISTRA e DESTRA compaiono nella storia;
+     *  4. rigiocando la storia, nessun punto viene dopo quello che ha chiuso la partita
+     *     (un lato può avere vinto solo con l'ultimo punto della storia);
+     *  5. finita è vera se e solo se, contando la storia, un lato ha vinto;
+     *  6. vincitore è il lato che ha vinto contando la storia, null se nessuno ha vinto.
+     */
+    boolean repOK() {
+        if (puntiPerVincere < 1 || scartoMinimo < 1) return false;
+        if (storia == null) return false;
+
+        int s = 0;
+        int d = 0;
+        for (int i = 0; i < storia.size(); i++) {
+            Lato chi = storia.get(i);
+            if (chi == null) return false;
+            if (chi == Lato.SINISTRA) s++;
+            else d++;
+            boolean qualcunoHaVinto = vince(s, d) || vince(d, s);
+            boolean ultimoPunto = i == storia.size() - 1;
+            if (qualcunoHaVinto && !ultimoPunto) return false;
+        }
+
+        if (puntiSinistra != s || puntiDestra != d) return false;
+
+        Lato atteso = null;
+        if (vince(s, d)) atteso = Lato.SINISTRA;
+        else if (vince(d, s)) atteso = Lato.DESTRA;
+        return finita == (atteso != null) && vincitore == atteso;
+    }
+
+    // METODO PRIVATO AUSILIARIO: la regola per vincere, su due conteggi
+    private boolean vince(int miei, int altri) {
+        return miei >= puntiPerVincere && miei - altri >= scartoMinimo;
+    }
 
     // METODO PRIVATO AUSILIARIO
     private boolean haVinto(Lato chi) {
